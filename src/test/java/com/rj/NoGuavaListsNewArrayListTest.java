@@ -1,4 +1,4 @@
-package com.yourorg;
+package com.rj;
 
 import org.junit.jupiter.api.Test;
 import org.openrewrite.java.JavaParser;

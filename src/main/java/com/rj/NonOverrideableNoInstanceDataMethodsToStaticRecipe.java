@@ -2,12 +2,8 @@ package com.rj;
 
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
-import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
-import org.openrewrite.java.JavaTemplate;
-import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.tree.J;
-import org.openrewrite.java.tree.Space;
 import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
@@ -48,10 +44,12 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
                 return method;
             }
 
-            List<J.Modifier> modifiers = new ArrayList<>(method.getModifiers());
-            modifiers.add(staticModifier);
+            if (method.hasModifier(J.Modifier.Type.Private) || method.hasModifier(J.Modifier.Type.Final)) {
+                List<J.Modifier> modifiers = new ArrayList<>(method.getModifiers());
+                modifiers.add(staticModifier);
 
-            method = method.withModifiers(modifiers);
+                method = method.withModifiers(modifiers);
+            }
 
             return method;
         }

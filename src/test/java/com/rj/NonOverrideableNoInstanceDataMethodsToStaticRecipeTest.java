@@ -32,6 +32,9 @@ class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteT
                         magicWord = value;
                     }
                     
+                    public String helloWorld() {
+                        return "Hello world!";
+                    }
                 }
                 """, """
                 package com.org;
@@ -45,7 +48,10 @@ class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteT
                     private static void setMagicWord(String value) {
                         magicWord = value;
                     }
-
+                    
+                    public String helloWorld() {
+                        return "Hello world!";
+                    }
                 }
                 """));
     }

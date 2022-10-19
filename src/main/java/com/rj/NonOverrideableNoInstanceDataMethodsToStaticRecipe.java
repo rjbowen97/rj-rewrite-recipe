@@ -2,12 +2,12 @@ package com.rj;
 
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.JavaIsoVisitor;
+import org.openrewrite.java.JavaTemplate;
 import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.marker.Markers;
-
-import java.util.List;
 
 import static java.util.Collections.emptyList;
 import static org.openrewrite.Tree.randomId;
@@ -31,8 +31,16 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
     }
 
     private static class NonOverrideableNoInstanceDataMethodsToStaticVisitor extends JavaIsoVisitor<ExecutionContext> {
-        private final MethodMatcher methodMatcher = new MethodMatcher(
-                "*..* *(..)");
+        private final MethodMatcher methodMatcher = new MethodMatcher("*..* *(..)");
+
+        private final J.Modifier staticModifier = new J.Modifier(randomId(),
+                                                                 EMPTY,
+                                                                 Markers.EMPTY,
+                                                                 J.Modifier.Type.Static,
+                                                                 emptyList());
+
+        private final JavaTemplate currentMethod = JavaTemplate
+                .builder(this::getCursor, staticModifier.toString()).build();
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext c) {
@@ -40,15 +48,19 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
                 return method;
             }
 
-            J.Modifier staticModifier = new J.Modifier(randomId(),
-                                                       EMPTY,
-                                                       Markers.EMPTY,
-                                                       J.Modifier.Type.Static,
-                                                       emptyList());
+            J.Modifier.Type currentMethodIsStatic = method.getModifiers()
+                                                          .stream()
+                                                          .map(J.Modifier::getType)
+                                                          .filter(type -> type == J.Modifier.Type.Static)
+                                                          .findAny()
+                                                          .orElse(null);
 
-            List<J.Modifier> modifiers = method.getModifiers();
-            modifiers.add(staticModifier);
-            method = method.withModifiers(modifiers);
+            if (currentMethodIsStatic == J.Modifier.Type.Static) {
+                return method;
+            }
+
+            method = method.withModifiers(ListUtils.concat(staticModifier, method.getModifiers()));
+//            method = method.withTemplate(currentMethod, method.getBody().getCoordinates().lastStatement());
 
             return method;
         }

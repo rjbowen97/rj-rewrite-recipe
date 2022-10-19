@@ -1,14 +1,17 @@
 package com.rj;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.openrewrite.ExecutionContext;
-import org.openrewrite.Option;
 import org.openrewrite.Recipe;
-import org.openrewrite.internal.lang.NonNull;
 import org.openrewrite.java.JavaIsoVisitor;
-import org.openrewrite.java.JavaTemplate;
+import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.marker.Markers;
+
+import java.util.List;
+
+import static java.util.Collections.emptyList;
+import static org.openrewrite.Tree.randomId;
+import static org.openrewrite.java.tree.Space.EMPTY;
 
 public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
 
@@ -23,38 +26,31 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
     }
 
     @Override
-    protected JavaIsoVisitor<ExecutionContext> getVisitor() {
-        // getVisitor() should always return a new instance of the visitor to avoid any state leaking between cycles
+    protected NonOverrideableNoInstanceDataMethodsToStaticVisitor getVisitor() {
         return new NonOverrideableNoInstanceDataMethodsToStaticVisitor();
     }
 
-    public class NonOverrideableNoInstanceDataMethodsToStaticVisitor extends JavaIsoVisitor<ExecutionContext> {
-        private final JavaTemplate helloTemplate =
-                JavaTemplate.builder(this::getCursor, "public String hello() { return \"Hello from #{}!\"; }")
-                        .build();
+    private static class NonOverrideableNoInstanceDataMethodsToStaticVisitor extends JavaIsoVisitor<ExecutionContext> {
+        private final MethodMatcher methodMatcher = new MethodMatcher(
+                "*..* *(..)");
 
         @Override
-        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext executionContext) {
-            // In any visit() method the call to super() is what causes sub-elements of to be visited
-            J.ClassDeclaration cd = super.visitClassDeclaration(classDecl, executionContext);
-
-            // Check if the class already has a method named "hello" so we don't incorrectly add a second "hello" method
-            boolean helloMethodExists = classDecl.getBody().getStatements().stream()
-                    .filter(statement -> statement instanceof J.MethodDeclaration)
-                    .map(J.MethodDeclaration.class::cast)
-                    .anyMatch(methodDeclaration -> methodDeclaration.getName().getSimpleName().equals("hello"));
-            if (helloMethodExists) {
-                return cd;
+        public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext c) {
+            if (!methodMatcher.matches(method.getMethodType())) {
+                return method;
             }
 
-            // Interpolate the fullyQualifiedClassName into the template and use the resulting AST to update the class body
-            cd = cd.withBody(
-                    cd.getBody().withTemplate(
-                            helloTemplate,
-                            cd.getBody().getCoordinates().lastStatement()
-                    ));
+            J.Modifier staticModifier = new J.Modifier(randomId(),
+                                                       EMPTY,
+                                                       Markers.EMPTY,
+                                                       J.Modifier.Type.Static,
+                                                       emptyList());
 
-            return cd;
+            List<J.Modifier> modifiers = method.getModifiers();
+            modifiers.add(staticModifier);
+            method = method.withModifiers(modifiers);
+
+            return method;
         }
     }
 }

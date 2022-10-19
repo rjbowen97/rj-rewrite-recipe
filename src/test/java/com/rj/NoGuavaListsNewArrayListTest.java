@@ -16,8 +16,8 @@ class NoGuavaListsNewArrayListTest implements RewriteTest {
     public void defaults(RecipeSpec spec) {
         spec.recipe(new NoGuavaListsNewArrayList())
             .parser(JavaParser.fromJavaVersion()
-                .logCompilationWarningsAndErrors(true)
-                .classpath("guava"));
+                              .logCompilationWarningsAndErrors(true)
+                              .classpath("guava"));
     }
 
     @Test
@@ -27,8 +27,8 @@ class NoGuavaListsNewArrayListTest implements RewriteTest {
             //for a given test. In this case, the parser for this test is configured to not log compilation warnings.
             spec -> spec
                 .parser(JavaParser.fromJavaVersion()
-                    .logCompilationWarningsAndErrors(false)
-                    .classpath("guava")),
+                                  .logCompilationWarningsAndErrors(false)
+                                  .classpath("guava")),
             java("""
                         import com.google.common.collect.*;
                         

@@ -39,6 +39,16 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
                                                                  emptyList());
 
         @Override
+        public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable variable, ExecutionContext executionContext) {
+            return super.visitVariable(variable, executionContext);
+        }
+
+        @Override
+        public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable, ExecutionContext executionContext) {
+            return super.visitVariableDeclarations(multiVariable, executionContext);
+        }
+
+        @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext c) {
             if (method.hasModifier(J.Modifier.Type.Static)) {
                 return method;

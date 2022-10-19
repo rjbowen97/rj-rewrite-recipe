@@ -31,6 +31,7 @@ class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteT
                     private void setMagicWord(String value) {
                         magicWord = value;
                     }
+                    
                 }
                 """, """
                 package com.org;

@@ -45,12 +45,12 @@ public class StaticMethodRecipe extends Recipe {
                                                                                                                                       J.Modifier.Type.Private) || type.equals(
                                                                                                                                       J.Modifier.Type.Final));
 
-            boolean classHasNonOverridableMethods = methodDeclarations.anyMatch(methodDeclarationIsNonOverrideable);
+            Stream<J.MethodDeclaration> nonOverridableMethods = methodDeclarations.filter(
+                    methodDeclarationIsNonOverrideable);
 
-            if (classHasNonOverridableMethods) {
-                // TODO - Insert method checks here (checking for methods with references only to static class variables)
-                return modifiedClassDecl;
-            }
+            // TODO - Check if current nonOverridableMethod references only static class variables.
+
+
 
             return classDecl;
         }

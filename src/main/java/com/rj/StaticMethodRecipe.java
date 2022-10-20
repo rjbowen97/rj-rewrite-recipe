@@ -28,6 +28,36 @@ public class StaticMethodRecipe extends Recipe {
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
 
         @Override
+        public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
+            J.MethodDeclaration modifiedMethod = super.visitMethodDeclaration(method, executionContext);
+
+            if (methodShouldBeStatic(modifiedMethod)) {
+                // TODO - Modify method here
+            }
+
+            return method;
+        }
+
+        private static boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
+            boolean methodIsNonOverridable = isMethodIsNonOverridable(modifiedMethod);
+            boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod);
+
+            return methodIsNonOverridable;
+        }
+
+        private static boolean isMethodIsNonOverridable(J.MethodDeclaration modifiedMethod) {
+            return modifiedMethod.getModifiers()
+                                 .stream()
+                                 .map(J.Modifier::getType)
+                                 .anyMatch(type -> type.equals(J.Modifier.Type.Private) || type.equals(J.Modifier.Type.Final));
+        }
+
+        private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod) {
+            // TODO - Implement
+            return true;
+        }
+
+        @Override
         public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext executionContext) {
             J.ClassDeclaration modifiedClassDecl = super.visitClassDeclaration(classDecl, executionContext);
 
@@ -49,8 +79,6 @@ public class StaticMethodRecipe extends Recipe {
                     methodDeclarationIsNonOverrideable);
 
             // TODO - Check if current nonOverridableMethod references only static class variables.
-
-
 
             return classDecl;
         }

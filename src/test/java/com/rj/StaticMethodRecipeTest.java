@@ -30,10 +30,10 @@ class StaticMethodRecipeTest implements RewriteTest {
                         return magicWord;
                     }
 
-                    private void setMagicWord(String value) {
+                    private void setMagicWord(String newMagicWork) {
                         if (thisIsTrue) {
                         }
-                        magicWord = value;
+                        magicWord = newMagicWork;
                     }
                     
                     public String helloWorld() {
@@ -51,10 +51,10 @@ class StaticMethodRecipeTest implements RewriteTest {
                         return magicWord;
                     }
                     
-                    private void setMagicWord(String value) {
+                    private void setMagicWord(String newMagicWork) {
                         if (thisIsTrue) {
                         }
-                        magicWord = value;
+                        magicWord = newMagicWork;
                     }
                     
                     public String helloWorld() {

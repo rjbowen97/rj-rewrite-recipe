@@ -33,6 +33,7 @@ public class StaticMethodRecipe extends Recipe {
 
             if (methodShouldBeStatic(modifiedMethod)) {
                 // TODO - Modify method here
+                return modifiedMethod;
             }
 
             return method;
@@ -42,7 +43,7 @@ public class StaticMethodRecipe extends Recipe {
             boolean methodIsNonOverridable = isMethodIsNonOverridable(modifiedMethod);
             boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod);
 
-            return methodIsNonOverridable;
+            return methodIsNonOverridable && methodReferencesInstanceData;
         }
 
         private static boolean isMethodIsNonOverridable(J.MethodDeclaration modifiedMethod) {

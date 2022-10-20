@@ -23,12 +23,16 @@ class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteT
                 package com.org;
                 public class Utilities {
                     private static String magicWord = "magic";
+                    private boolean thisIsTrue = true;
+
 
                     private String getMagicWord() {
                         return magicWord;
                     }
 
                     private void setMagicWord(String value) {
+                        if (thisIsTrue) {
+                        }
                         magicWord = value;
                     }
                     
@@ -40,12 +44,16 @@ class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteT
                 package com.org;
                 public class Utilities {
                     private static String magicWord = "magic";
+                    private boolean thisIsTrue = true;
+
                     
                     private static String getMagicWord() {
                         return magicWord;
                     }
                     
-                    private static void setMagicWord(String value) {
+                    private void setMagicWord(String value) {
+                        if (thisIsTrue) {
+                        }
                         magicWord = value;
                     }
                     

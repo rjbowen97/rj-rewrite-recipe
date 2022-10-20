@@ -5,6 +5,7 @@ import org.openrewrite.Recipe;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.tree.J;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -55,7 +56,19 @@ public class StaticMethodRecipe extends Recipe {
 
         private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod) {
             // TODO - Implement
-            return true;
+
+            AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
+
+            new JavaIsoVisitor<AtomicBoolean>() {
+
+                @Override
+                public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable variable, AtomicBoolean atomicBoolean) {
+                    J.VariableDeclarations.NamedVariable namedVariable = super.visitVariable(variable, atomicBoolean);
+                    return namedVariable;
+                }
+            }.visit(modifiedMethod, hasInstanceDataReference);
+
+            return hasInstanceDataReference.get();
         }
 
         @Override

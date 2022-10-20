@@ -7,10 +7,10 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
 
-class NonOverrideableNoInstanceDataMethodsToStaticRecipeTest implements RewriteTest {
+class StaticMethodRecipeTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipe(new NonOverrideableNoInstanceDataMethodsToStaticRecipe())
+        spec.recipe(new StaticMethodRecipe())
             .parser(JavaParser.fromJavaVersion().logCompilationWarningsAndErrors(true));
     }
 

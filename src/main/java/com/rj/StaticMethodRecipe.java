@@ -13,7 +13,7 @@ import static java.util.Collections.emptyList;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
 
-public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
+public class StaticMethodRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
@@ -26,17 +26,19 @@ public class NonOverrideableNoInstanceDataMethodsToStaticRecipe extends Recipe {
     }
 
     @Override
-    protected NonOverrideableNoInstanceDataMethodsToStaticVisitor getVisitor() {
-        return new NonOverrideableNoInstanceDataMethodsToStaticVisitor();
+    protected StaticMethodVisitor getVisitor() {
+        return new StaticMethodVisitor();
     }
 
-    private static class NonOverrideableNoInstanceDataMethodsToStaticVisitor extends JavaIsoVisitor<ExecutionContext> {
+    private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
 
         private final J.Modifier staticModifier = new J.Modifier(randomId(),
                                                                  EMPTY.withWhitespace(" "),
                                                                  Markers.EMPTY,
                                                                  J.Modifier.Type.Static,
                                                                  emptyList());
+
+
 
         @Override
         public J.VariableDeclarations.NamedVariable visitVariable(J.VariableDeclarations.NamedVariable variable, ExecutionContext executionContext) {

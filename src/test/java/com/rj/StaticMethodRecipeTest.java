@@ -20,7 +20,11 @@ class StaticMethodRecipeTest implements RewriteTest {
             //There is an overloaded version or rewriteRun that allows the RecipeSpec to be customized specifically
             //for a given test. In this case, the parser for this test is configured to not log compilation warnings.
             java("""
-                public class Utilities {
+                import java.io.IOException;
+                import java.io.ObjectStreamException;
+                import java.io.Serializable;
+                
+                public class Utilities implements Serializable {
                     private static String magicWord = "magic";
                     private boolean magicWordIsLocked = true;
                     private static final String helloWorldString = "Hello world!";
@@ -52,6 +56,22 @@ class StaticMethodRecipeTest implements RewriteTest {
                         return helloWorldString;
                     }
                 
+                    // NOT STATIC
+                    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+                        out.write(magicWord.getBytes());
+                    }
+                
+                    // NOT STATIC
+                    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+                        in.defaultReadObject();
+                        magicWord = (String) in.readObject();
+                    }
+                
+                    // NOT STATIC
+                    private void readObjectNoData() throws ObjectStreamException {
+                        magicWord = "Just make something up!";
+                    }
+                
                     private static class Toolbox {
                         private String wrench = "wrench";
                         private static String drill = "drill";
@@ -78,7 +98,11 @@ class StaticMethodRecipeTest implements RewriteTest {
                     }
                 }
                 """, """
-                public class Utilities {
+                import java.io.IOException;
+                import java.io.ObjectStreamException;
+                import java.io.Serializable;
+                
+                public class Utilities implements Serializable {
                     private static String magicWord = "magic";
                     private boolean magicWordIsLocked = true;
                     private static final String helloWorldString = "Hello world!";
@@ -110,6 +134,22 @@ class StaticMethodRecipeTest implements RewriteTest {
                         return helloWorldString;
                     }
                 
+                    // NOT STATIC
+                    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+                        out.write(magicWord.getBytes());
+                    }
+                
+                    // NOT STATIC
+                    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+                        in.defaultReadObject();
+                        magicWord = (String) in.readObject();
+                    }
+                
+                    // NOT STATIC
+                    private void readObjectNoData() throws ObjectStreamException {
+                        magicWord = "Just make something up!";
+                    }
+                
                     private static class Toolbox {
                         private String wrench = "wrench";
                         private static String drill = "drill";
@@ -135,6 +175,7 @@ class StaticMethodRecipeTest implements RewriteTest {
                         }
                     }
                 }
+
                 """));
     }
 }

@@ -6,7 +6,10 @@ import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.Statement;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class StaticMethodRecipe extends Recipe {
 
@@ -26,6 +29,28 @@ public class StaticMethodRecipe extends Recipe {
     }
 
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
+
+        private ArrayList<J.VariableDeclarations> instanceDataVariables = new ArrayList<>();
+
+        @Override
+        public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable, ExecutionContext executionContext) {
+
+            J.VariableDeclarations variableDeclarations = super.visitVariableDeclarations(multiVariable,
+                                                                                          executionContext
+            );
+
+            boolean declaredVariableIsStatic = variableDeclarations.getModifiers()
+                                                                   .stream()
+                                                                   .map(J.Modifier::getType)
+                                                                   .anyMatch(type -> type.equals(J.Modifier.Type.Static));
+
+            if (!declaredVariableIsStatic && (getCursor().firstEnclosing(J.MethodDeclaration.class) == null)) {
+                instanceDataVariables.add(variableDeclarations);
+            }
+
+            return variableDeclarations;
+        }
+
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
             J.MethodDeclaration modifiedMethod = super.visitMethodDeclaration(method, executionContext);
@@ -38,16 +63,13 @@ public class StaticMethodRecipe extends Recipe {
             return method;
         }
 
-        @Override
-        public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable, ExecutionContext executionContext) {
-            return super.visitVariableDeclarations(multiVariable, executionContext);
-        }
-
-        private static boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
+        private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
             boolean methodIsNonOverridable = isMethodIsNonOverridable(modifiedMethod);
-            boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod);
+            boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod,
+                                                                                   this.instanceDataVariables
+            );
 
-            return methodIsNonOverridable && methodReferencesInstanceData;
+            return methodIsNonOverridable && !methodReferencesInstanceData;
         }
 
         private static boolean isMethodIsNonOverridable(J.MethodDeclaration modifiedMethod) {
@@ -57,18 +79,29 @@ public class StaticMethodRecipe extends Recipe {
                                  .anyMatch(type -> type.equals(J.Modifier.Type.Private) || type.equals(J.Modifier.Type.Final));
         }
 
-        private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod) {
+        private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod, ArrayList<J.VariableDeclarations> instanceDataVariables) {
             // TODO - Find static fields and create a list
 
             // TODO - Use said list to filter visitIdentifier
+
+            List<String> instanceDataVariablesSimpleNames = instanceDataVariables.stream()
+                                                                                 .flatMap(variableDeclarations -> variableDeclarations.getVariables()
+                                                                                                                                      .stream()
+                                                                                                                                      .map(J.VariableDeclarations.NamedVariable::getSimpleName))
+                                                                                 .collect(Collectors.toList());
 
             AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
 
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
+                    J.Identifier visitIdentifier = super.visitIdentifier(identifier, atomicBoolean);
 
-                    return super.visitIdentifier(identifier, atomicBoolean);
+                    if (instanceDataVariablesSimpleNames.contains(visitIdentifier.getSimpleName())) {
+                        atomicBoolean.set(true);
+                    }
+
+                    return visitIdentifier;
                 }
 
                 @Override

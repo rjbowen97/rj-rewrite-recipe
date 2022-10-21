@@ -1,5 +1,6 @@
 package com.rj;
 
+import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.java.JavaIsoVisitor;
@@ -60,41 +61,27 @@ public class StaticMethodRecipe extends Recipe {
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
-            J.MethodDeclaration modifiedMethod = super.visitMethodDeclaration(method, executionContext);
-
-            if (methodShouldBeStatic(modifiedMethod) && !method.hasModifier(J.Modifier.Type.Static)) {
-                List<J.Modifier> modifiers = new ArrayList<>(modifiedMethod.getModifiers());
-                modifiers.add(staticModifier);
-
-                modifiedMethod = modifiedMethod.withModifiers(modifiers);
-
-                return modifiedMethod;
+            if (methodShouldBeStatic(method) && !method.hasModifier(J.Modifier.Type.Static)) {
+                return addStaticModifierTo(method);
             }
 
             return method;
         }
 
         private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
-            boolean methodIsNonOverridable = isMethodIsNonOverridable(modifiedMethod);
-            boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod,
-                                                                                   this.instanceVariables
-            );
-
-            return methodIsNonOverridable && !methodReferencesInstanceData;
+            return isMethodIsNonOverridable(modifiedMethod) &&
+                   !doesMethodReferenceInstanceData(modifiedMethod, this.instanceVariables);
         }
 
         private static boolean isMethodIsNonOverridable(J.MethodDeclaration modifiedMethod) {
             return modifiedMethod.getModifiers()
                                  .stream()
                                  .map(J.Modifier::getType)
-                                 .anyMatch(type -> type.equals(J.Modifier.Type.Private) || type.equals(J.Modifier.Type.Final));
+                                 .anyMatch(type -> type.equals(J.Modifier.Type.Private) ||
+                                                   type.equals(J.Modifier.Type.Final));
         }
 
         private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod, ArrayList<J.VariableDeclarations> instanceDataVariables) {
-            // TODO - Find static fields and create a list
-
-            // TODO - Use said list to filter visitIdentifier
-
             List<String> instanceDataVariablesSimpleNames = instanceDataVariables.stream()
                                                                                  .flatMap(variableDeclarations -> variableDeclarations.getVariables()
                                                                                                                                       .stream()
@@ -103,7 +90,6 @@ public class StaticMethodRecipe extends Recipe {
 
             AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
-
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
                     J.Identifier visitIdentifier = super.visitIdentifier(identifier, atomicBoolean);
@@ -119,30 +105,14 @@ public class StaticMethodRecipe extends Recipe {
             return hasInstanceDataReference.get();
         }
 
-//        @Override
-//        public J.ClassDeclaration visitClassDeclaration(J.ClassDeclaration classDecl, ExecutionContext executionContext) {
-//            J.ClassDeclaration modifiedClassDecl = super.visitClassDeclaration(classDecl, executionContext);
-//
-//            Stream<J.MethodDeclaration> methodDeclarations = classDecl.getBody()
-//                                                                      .getStatements()
-//                                                                      .stream()
-//                                                                      .filter(statement -> statement instanceof J.MethodDeclaration)
-//                                                                      .map(J.MethodDeclaration.class::cast);
-//
-//            Predicate<J.MethodDeclaration> methodDeclarationIsNonOverrideable = methodDeclaration -> methodDeclaration.getModifiers()
-//                                                                                                                      .stream()
-//                                                                                                                      .map(J.Modifier::getType)
-//                                                                                                                      .anyMatch(
-//                                                                                                                              type -> type.equals(
-//                                                                                                                                      J.Modifier.Type.Private) || type.equals(
-//                                                                                                                                      J.Modifier.Type.Final));
-//
-//            Stream<J.MethodDeclaration> nonOverridableMethods = methodDeclarations.filter(
-//                    methodDeclarationIsNonOverrideable);
-//
-//            // TODO - Check if current nonOverridableMethod references only static class variables.
-//
-//            return classDecl;
-//        }
+        @NotNull
+        private static J.MethodDeclaration addStaticModifierTo(J.MethodDeclaration method) {
+            List<J.Modifier> modifiers = new ArrayList<>(method.getModifiers());
+            modifiers.add(staticModifier);
+
+            method = method.withModifiers(modifiers);
+
+            return method;
+        }
     }
 }

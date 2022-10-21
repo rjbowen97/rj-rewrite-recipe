@@ -4,7 +4,9 @@ import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.java.JavaIsoVisitor;
+import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
@@ -61,11 +63,34 @@ public class StaticMethodRecipe extends Recipe {
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
+            if (isMethodExcluded(method)) {
+                return method;
+            }
             if (methodShouldBeStatic(method) && !method.hasModifier(J.Modifier.Type.Static)) {
                 return addStaticModifierTo(method);
             }
 
             return method;
+        }
+
+        private boolean isMethodExcluded(J.MethodDeclaration method) {
+
+            J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
+
+            boolean enclosingClassImplementsSerializable = false;
+            if (classDecl.getImplements() != null) {
+                enclosingClassImplementsSerializable = classDecl.getImplements()
+                                                                .stream()
+                                                                .anyMatch(implement -> TypeUtils.isOfClassType(implement.getType(),
+                                                                                                               "java.io.Serializable"
+                                                                ));
+            }
+
+            if (enclosingClassImplementsSerializable) {
+                return true;
+            }
+
+            return false;
         }
 
         private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {

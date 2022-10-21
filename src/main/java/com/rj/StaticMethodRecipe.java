@@ -5,11 +5,16 @@ import org.openrewrite.Recipe;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.Statement;
+import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.emptyList;
+import static org.openrewrite.Tree.randomId;
+import static org.openrewrite.java.tree.Space.EMPTY;
 
 public class StaticMethodRecipe extends Recipe {
 
@@ -29,6 +34,12 @@ public class StaticMethodRecipe extends Recipe {
     }
 
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
+        private final J.Modifier staticModifier = new J.Modifier(randomId(),
+                                                                 EMPTY.withWhitespace(" "),
+                                                                 Markers.EMPTY,
+                                                                 J.Modifier.Type.Static,
+                                                                 emptyList()
+        );
 
         private ArrayList<J.VariableDeclarations> instanceDataVariables = new ArrayList<>();
 
@@ -55,8 +66,12 @@ public class StaticMethodRecipe extends Recipe {
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
             J.MethodDeclaration modifiedMethod = super.visitMethodDeclaration(method, executionContext);
 
-            if (methodShouldBeStatic(modifiedMethod)) {
-                // TODO - Modify method here
+            if (methodShouldBeStatic(modifiedMethod) && !method.hasModifier(J.Modifier.Type.Static)) {
+                List<J.Modifier> modifiers = new ArrayList<>(modifiedMethod.getModifiers());
+                modifiers.add(staticModifier);
+
+                modifiedMethod = modifiedMethod.withModifiers(modifiers);
+
                 return modifiedMethod;
             }
 

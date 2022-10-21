@@ -4,7 +4,6 @@ import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.java.JavaIsoVisitor;
 import org.openrewrite.java.tree.J;
-import org.openrewrite.java.tree.Statement;
 import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
@@ -17,6 +16,12 @@ import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
 
 public class StaticMethodRecipe extends Recipe {
+    private static final J.Modifier staticModifier = new J.Modifier(randomId(),
+                                                                    EMPTY.withWhitespace(" "),
+                                                                    Markers.EMPTY,
+                                                                    J.Modifier.Type.Static,
+                                                                    emptyList()
+    );
 
     @Override
     public String getDisplayName() {
@@ -34,32 +39,23 @@ public class StaticMethodRecipe extends Recipe {
     }
 
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
-        private final J.Modifier staticModifier = new J.Modifier(randomId(),
-                                                                 EMPTY.withWhitespace(" "),
-                                                                 Markers.EMPTY,
-                                                                 J.Modifier.Type.Static,
-                                                                 emptyList()
-        );
-
-        private ArrayList<J.VariableDeclarations> instanceDataVariables = new ArrayList<>();
+        private final ArrayList<J.VariableDeclarations> instanceVariables = new ArrayList<>();
 
         @Override
         public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable, ExecutionContext executionContext) {
-
-            J.VariableDeclarations variableDeclarations = super.visitVariableDeclarations(multiVariable,
-                                                                                          executionContext
-            );
-
-            boolean declaredVariableIsStatic = variableDeclarations.getModifiers()
-                                                                   .stream()
-                                                                   .map(J.Modifier::getType)
-                                                                   .anyMatch(type -> type.equals(J.Modifier.Type.Static));
-
-            if (!declaredVariableIsStatic && (getCursor().firstEnclosing(J.MethodDeclaration.class) == null)) {
-                instanceDataVariables.add(variableDeclarations);
+            boolean declaredVariableIsClassLevel = getCursor().firstEnclosing(J.MethodDeclaration.class) == null;
+            if (!declaredVariableIsStatic(multiVariable) && declaredVariableIsClassLevel) {
+                instanceVariables.add(multiVariable);
             }
 
-            return variableDeclarations;
+            return multiVariable;
+        }
+
+        private static boolean declaredVariableIsStatic(J.VariableDeclarations variableDeclarations) {
+            return variableDeclarations.getModifiers()
+                                       .stream()
+                                       .map(J.Modifier::getType)
+                                       .anyMatch(type -> type.equals(J.Modifier.Type.Static));
         }
 
         @Override
@@ -81,7 +77,7 @@ public class StaticMethodRecipe extends Recipe {
         private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
             boolean methodIsNonOverridable = isMethodIsNonOverridable(modifiedMethod);
             boolean methodReferencesInstanceData = doesMethodReferenceInstanceData(modifiedMethod,
-                                                                                   this.instanceDataVariables
+                                                                                   this.instanceVariables
             );
 
             return methodIsNonOverridable && !methodReferencesInstanceData;
@@ -117,12 +113,6 @@ public class StaticMethodRecipe extends Recipe {
                     }
 
                     return visitIdentifier;
-                }
-
-                @Override
-                public Statement visitStatement(Statement statement, AtomicBoolean atomicBoolean) {
-                    Statement visitStatement = super.visitStatement(statement, atomicBoolean);
-                    return visitStatement;
                 }
             }.visit(modifiedMethod.getBody(), hasInstanceDataReference);
 

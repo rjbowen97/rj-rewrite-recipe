@@ -75,6 +75,8 @@ public class StaticMethodRecipe extends Recipe {
 
         private boolean isMethodExcluded(J.MethodDeclaration method) {
 
+            String pointCutExpression = "* writeObject(java.io.ObjectOutputStream)";
+            MethodMatcher methodMatcher = new MethodMatcher(pointCutExpression);
             J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
 
             boolean enclosingClassImplementsSerializable = false;
@@ -87,7 +89,7 @@ public class StaticMethodRecipe extends Recipe {
             }
 
             if (enclosingClassImplementsSerializable) {
-                return true;
+                return methodMatcher.matches(method, classDecl);
             }
 
             return false;

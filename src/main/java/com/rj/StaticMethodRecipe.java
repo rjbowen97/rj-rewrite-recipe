@@ -10,6 +10,8 @@ import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.Markers;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,6 +25,12 @@ public class StaticMethodRecipe extends Recipe {
                                                                     Markers.EMPTY,
                                                                     J.Modifier.Type.Static,
                                                                     emptyList()
+    );
+
+    private static final Collection<String> METHODS_TO_EXCLUDE_FROM_RECIPE = Arrays.asList(
+            "* writeObject(java.io.ObjectOutputStream)",
+            "* readObject(java.io.ObjectInputStream)",
+            "* readObjectNoData()"
     );
 
     @Override
@@ -43,13 +51,10 @@ public class StaticMethodRecipe extends Recipe {
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
-            if (method.hasModifier(J.Modifier.Type.Static)) {
+            if (methodIsStatic(method) || methodIsInExclusionList(method)) {
                 return method;
             }
 
-            if (methodShouldBeExcluded(method)) {
-                return method;
-            }
             if (methodShouldBeStatic(method)) {
                 return addStaticModifierTo(method);
             }
@@ -57,19 +62,18 @@ public class StaticMethodRecipe extends Recipe {
             return method;
         }
 
-        private boolean methodShouldBeExcluded(J.MethodDeclaration method) {
+        private static boolean methodIsStatic(J.MethodDeclaration method) {
+            return method.hasModifier(J.Modifier.Type.Static);
+        }
+
+        private boolean methodIsInExclusionList(J.MethodDeclaration method) {
             J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
             boolean enclosingClassImplementsSerializable = classImplementsSerializable(classDecl);
 
             if (enclosingClassImplementsSerializable) {
-                ArrayList<String> excludedMethodExpressions = new ArrayList<>();
-                excludedMethodExpressions.add("* writeObject(java.io.ObjectOutputStream)");
-                excludedMethodExpressions.add("* readObject(java.io.ObjectInputStream)");
-                excludedMethodExpressions.add("* readObjectNoData()");
-
-                return excludedMethodExpressions.stream()
-                                                .map(MethodMatcher::new)
-                                                .anyMatch(methodMatcher -> methodMatcher.matches(method, classDecl));
+                return METHODS_TO_EXCLUDE_FROM_RECIPE.stream()
+                                                     .map(MethodMatcher::new)
+                                                     .anyMatch(methodMatcher -> methodMatcher.matches(method, classDecl));
             }
 
             return false;

@@ -63,7 +63,7 @@ public class StaticMethodRecipe extends Recipe {
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
-            if (isMethodExcluded(method)) {
+            if (methodShouldBeExcluded(method)) {
                 return method;
             }
             if (methodShouldBeStatic(method) && !method.hasModifier(J.Modifier.Type.Static)) {
@@ -73,12 +73,26 @@ public class StaticMethodRecipe extends Recipe {
             return method;
         }
 
-        private boolean isMethodExcluded(J.MethodDeclaration method) {
-
-            String pointCutExpression = "* writeObject(java.io.ObjectOutputStream)";
-            MethodMatcher methodMatcher = new MethodMatcher(pointCutExpression);
+        private boolean methodShouldBeExcluded(J.MethodDeclaration method) {
             J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
+            boolean enclosingClassImplementsSerializable = classImplementsSerializable(classDecl);
 
+            if (enclosingClassImplementsSerializable) {
+
+                ArrayList<String> excludedMethodExpressions = new ArrayList<>();
+                excludedMethodExpressions.add("* writeObject(java.io.ObjectOutputStream)");
+                excludedMethodExpressions.add("* readObject(java.io.ObjectInputStream)");
+                excludedMethodExpressions.add("* readObjectNoData()");
+
+                return excludedMethodExpressions.stream()
+                                                .map(MethodMatcher::new)
+                                                .anyMatch(methodMatcher -> methodMatcher.matches(method, classDecl));
+            }
+
+            return false;
+        }
+
+        private static boolean classImplementsSerializable(J.ClassDeclaration classDecl) {
             boolean enclosingClassImplementsSerializable = false;
             if (classDecl.getImplements() != null) {
                 enclosingClassImplementsSerializable = classDecl.getImplements()
@@ -87,12 +101,7 @@ public class StaticMethodRecipe extends Recipe {
                                                                                                                "java.io.Serializable"
                                                                 ));
             }
-
-            if (enclosingClassImplementsSerializable) {
-                return methodMatcher.matches(method, classDecl);
-            }
-
-            return false;
+            return enclosingClassImplementsSerializable;
         }
 
         private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {

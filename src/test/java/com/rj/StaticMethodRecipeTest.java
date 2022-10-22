@@ -97,6 +97,7 @@ class StaticMethodRecipeTest implements RewriteTest {
                         }
                     }
                 }
+                
                 """, """
                 import java.io.IOException;
                 import java.io.ObjectStreamException;

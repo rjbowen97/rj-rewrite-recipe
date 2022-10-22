@@ -63,10 +63,14 @@ public class StaticMethodRecipe extends Recipe {
 
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
+            if (method.hasModifier(J.Modifier.Type.Static)) {
+                return method;
+            }
+
             if (methodShouldBeExcluded(method)) {
                 return method;
             }
-            if (methodShouldBeStatic(method) && !method.hasModifier(J.Modifier.Type.Static)) {
+            if (methodShouldBeStatic(method)) {
                 return addStaticModifierTo(method);
             }
 

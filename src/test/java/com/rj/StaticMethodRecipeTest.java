@@ -28,6 +28,8 @@ class StaticMethodRecipeTest implements RewriteTest {
                     private static String magicWord = "magic";
                     private boolean magicWordIsLocked = true;
                     private static final String helloWorldString = "Hello world!";
+                    
+                    public boolean a,b = true;
                 
                     // STATIC
                     private String getMagicWord() {
@@ -107,6 +109,8 @@ class StaticMethodRecipeTest implements RewriteTest {
                     private static String magicWord = "magic";
                     private boolean magicWordIsLocked = true;
                     private static final String helloWorldString = "Hello world!";
+                    
+                    public boolean a,b = true;
                 
                     // STATIC
                     private static String getMagicWord() {

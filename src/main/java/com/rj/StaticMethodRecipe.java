@@ -145,6 +145,24 @@ public class StaticMethodRecipe extends Recipe {
             return hasInstanceDataReference.get();
         }
 
+        private boolean identifierIsStatic(J.Identifier identifier) {
+            J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
+
+            return classDecl.getBody()
+                            .getStatements()
+                            .stream()
+                            .filter(J.VariableDeclarations.class::isInstance)
+                            .map(J.VariableDeclarations.class::cast)
+                            .filter(variableDeclarations -> variableDeclarations.getModifiers()
+                                                                                .stream()
+                                                                                .map(J.Modifier::getType)
+                                                                                .anyMatch(type -> type.equals(J.Modifier.Type.Static)))
+                            .flatMap(variableDeclarations -> variableDeclarations.getVariables().stream())
+                            .anyMatch(namedVariable -> namedVariable.getName()
+                                                                    .getSimpleName()
+                                                                    .equals(identifier.getSimpleName()));
+        }
+
         @NotNull
         private static J.MethodDeclaration addStaticModifierTo(J.MethodDeclaration method) {
             List<J.Modifier> modifiers = new ArrayList<>(method.getModifiers());

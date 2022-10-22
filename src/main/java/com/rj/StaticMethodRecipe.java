@@ -73,7 +73,9 @@ public class StaticMethodRecipe extends Recipe {
             if (enclosingClassImplementsSerializable) {
                 return METHODS_TO_EXCLUDE_FROM_RECIPE.stream()
                                                      .map(MethodMatcher::new)
-                                                     .anyMatch(methodMatcher -> methodMatcher.matches(method, classDecl));
+                                                     .anyMatch(methodMatcher -> methodMatcher.matches(method,
+                                                                                                      classDecl
+                                                     ));
             }
 
             return false;
@@ -108,7 +110,7 @@ public class StaticMethodRecipe extends Recipe {
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
                     J.Identifier visitIdentifier = super.visitIdentifier(identifier, atomicBoolean);
 
-                    if (identifierIsInstanceVariable(identifier)) {
+                    if (isInstanceVariableOfEnclosingClass(identifier)) {
                         atomicBoolean.set(true);
                     }
 
@@ -119,22 +121,23 @@ public class StaticMethodRecipe extends Recipe {
             return hasInstanceDataReference.get();
         }
 
-        private boolean identifierIsInstanceVariable(J.Identifier identifier) {
-            J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
+        private boolean isInstanceVariableOfEnclosingClass(J.Identifier identifier) {
+            J.ClassDeclaration enclosingClass = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
 
-            return classDecl.getBody()
-                            .getStatements()
-                            .stream()
-                            .filter(J.VariableDeclarations.class::isInstance)
-                            .map(J.VariableDeclarations.class::cast)
-                            .filter(variableDeclarations -> variableDeclarations.getModifiers()
-                                                                                .stream()
-                                                                                .map(J.Modifier::getType)
-                                                                                .noneMatch(type -> type.equals(J.Modifier.Type.Static)))
-                            .flatMap(variableDeclarations -> variableDeclarations.getVariables().stream())
-                            .anyMatch(namedVariable -> namedVariable.getName()
-                                                                    .getSimpleName()
-                                                                    .equals(identifier.getSimpleName()));
+            return enclosingClass.getBody()
+                                 .getStatements()
+                                 .stream()
+                                 .filter(J.VariableDeclarations.class::isInstance)
+                                 .map(J.VariableDeclarations.class::cast)
+                                 .filter(variableDeclarations -> variableDeclarations.getVariables()
+                                                                                     .stream()
+                                                                                     .anyMatch(namedVariable -> namedVariable.getName()
+                                                                                                                             .getSimpleName()
+                                                                                                                             .equals(identifier.getSimpleName())))
+                                 .anyMatch(variableDeclarations -> variableDeclarations.getModifiers()
+                                                                                       .stream()
+                                                                                       .map(J.Modifier::getType)
+                                                                                       .noneMatch(type -> type.equals(J.Modifier.Type.Static)));
         }
 
         @NotNull

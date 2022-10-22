@@ -12,7 +12,6 @@ import org.openrewrite.marker.Markers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static org.openrewrite.Tree.randomId;
@@ -42,25 +41,6 @@ public class StaticMethodRecipe extends Recipe {
     }
 
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
-        private final ArrayList<J.VariableDeclarations> instanceVariables = new ArrayList<>();
-
-        @Override
-        public J.VariableDeclarations visitVariableDeclarations(J.VariableDeclarations multiVariable, ExecutionContext executionContext) {
-            boolean declaredVariableIsClassLevel = getCursor().firstEnclosing(J.MethodDeclaration.class) == null;
-            if (!declaredVariableIsStatic(multiVariable) && declaredVariableIsClassLevel) {
-                instanceVariables.add(multiVariable);
-            }
-
-            return multiVariable;
-        }
-
-        private static boolean declaredVariableIsStatic(J.VariableDeclarations variableDeclarations) {
-            return variableDeclarations.getModifiers()
-                                       .stream()
-                                       .map(J.Modifier::getType)
-                                       .anyMatch(type -> type.equals(J.Modifier.Type.Static));
-        }
-
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
             if (method.hasModifier(J.Modifier.Type.Static)) {
@@ -82,7 +62,6 @@ public class StaticMethodRecipe extends Recipe {
             boolean enclosingClassImplementsSerializable = classImplementsSerializable(classDecl);
 
             if (enclosingClassImplementsSerializable) {
-
                 ArrayList<String> excludedMethodExpressions = new ArrayList<>();
                 excludedMethodExpressions.add("* writeObject(java.io.ObjectOutputStream)");
                 excludedMethodExpressions.add("* readObject(java.io.ObjectInputStream)");
@@ -97,44 +76,35 @@ public class StaticMethodRecipe extends Recipe {
         }
 
         private static boolean classImplementsSerializable(J.ClassDeclaration classDecl) {
-            boolean enclosingClassImplementsSerializable = false;
             if (classDecl.getImplements() != null) {
-                enclosingClassImplementsSerializable = classDecl.getImplements()
-                                                                .stream()
-                                                                .anyMatch(implement -> TypeUtils.isOfClassType(implement.getType(),
-                                                                                                               "java.io.Serializable"
-                                                                ));
+                return classDecl.getImplements()
+                                .stream()
+                                .anyMatch(implement -> TypeUtils.isOfClassType(implement.getType(),
+                                                                               "java.io.Serializable"
+                                ));
             }
-            return enclosingClassImplementsSerializable;
+            return false;
         }
 
         private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
-            return isMethodIsNonOverridable(modifiedMethod) &&
-                   !doesMethodReferenceInstanceData(modifiedMethod, this.instanceVariables);
+            return hasPrivateOrFinal(modifiedMethod.getModifiers()) && !doesMethodReferenceInstanceData(modifiedMethod);
         }
 
-        private static boolean isMethodIsNonOverridable(J.MethodDeclaration modifiedMethod) {
-            return modifiedMethod.getModifiers()
-                                 .stream()
-                                 .map(J.Modifier::getType)
-                                 .anyMatch(type -> type.equals(J.Modifier.Type.Private) ||
-                                                   type.equals(J.Modifier.Type.Final));
+        private static boolean hasPrivateOrFinal(List<J.Modifier> modifiers) {
+            return modifiers.stream()
+                            .map(J.Modifier::getType)
+                            .anyMatch(type -> type.equals(J.Modifier.Type.Private) ||
+                                              type.equals(J.Modifier.Type.Final));
         }
 
-        private static boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod, ArrayList<J.VariableDeclarations> instanceDataVariables) {
-            List<String> instanceDataVariablesSimpleNames = instanceDataVariables.stream()
-                                                                                 .flatMap(variableDeclarations -> variableDeclarations.getVariables()
-                                                                                                                                      .stream()
-                                                                                                                                      .map(J.VariableDeclarations.NamedVariable::getSimpleName))
-                                                                                 .collect(Collectors.toList());
-
+        private boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod) {
             AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
                     J.Identifier visitIdentifier = super.visitIdentifier(identifier, atomicBoolean);
 
-                    if (instanceDataVariablesSimpleNames.contains(visitIdentifier.getSimpleName())) {
+                    if (identifierIsInstanceVariable(identifier)) {
                         atomicBoolean.set(true);
                     }
 
@@ -145,7 +115,7 @@ public class StaticMethodRecipe extends Recipe {
             return hasInstanceDataReference.get();
         }
 
-        private boolean identifierIsStatic(J.Identifier identifier) {
+        private boolean identifierIsInstanceVariable(J.Identifier identifier) {
             J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
 
             return classDecl.getBody()
@@ -156,7 +126,7 @@ public class StaticMethodRecipe extends Recipe {
                             .filter(variableDeclarations -> variableDeclarations.getModifiers()
                                                                                 .stream()
                                                                                 .map(J.Modifier::getType)
-                                                                                .anyMatch(type -> type.equals(J.Modifier.Type.Static)))
+                                                                                .noneMatch(type -> type.equals(J.Modifier.Type.Static)))
                             .flatMap(variableDeclarations -> variableDeclarations.getVariables().stream())
                             .anyMatch(namedVariable -> namedVariable.getName()
                                                                     .getSimpleName()

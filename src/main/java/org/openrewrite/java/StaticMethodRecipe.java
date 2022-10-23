@@ -133,7 +133,7 @@ public class StaticMethodRecipe extends Recipe {
                                                        emptyList()
             );
 
-            method = method.withModifiers(ListUtils.concat(staticModifier, method.getModifiers()));
+            method = method.withModifiers(ListUtils.concat(method.getModifiers(), staticModifier));
 
             return method;
         }

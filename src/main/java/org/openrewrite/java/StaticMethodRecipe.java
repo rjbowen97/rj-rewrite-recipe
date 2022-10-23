@@ -1,10 +1,8 @@
-package com.rj;
+package org.openrewrite.java;
 
 import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
-import org.openrewrite.java.JavaIsoVisitor;
-import org.openrewrite.java.MethodMatcher;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.Markers;
@@ -35,12 +33,16 @@ public class StaticMethodRecipe extends Recipe {
 
     @Override
     public String getDisplayName() {
-        return "Private and Final Methods Without Instance Data Access Should be Static";
+        return "Add `static` to non-overridable methods without instance variable usage";
     }
 
     @Override
     public String getDescription() {
-        return "Non-overridable methods (private or final) that don't access instance data can be static to prevent any misunderstanding about the contract of the method.";
+        return "Makes `private` or `final` methods `static` if without references to instance variables. " +
+               "When `java.io.Serializable` is implemented by a class, the following methods are excluded from this " +
+               "recipe: `private void writeObject(java.io.ObjectOutputStream out) throws IOException;`" +
+               ",`private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException;`" +
+               ",`private void readObjectNoData() throws ObjectStreamException;`";
     }
 
     @Override

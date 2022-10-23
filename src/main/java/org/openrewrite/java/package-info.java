@@ -15,7 +15,7 @@
  */
 @NonNullApi
 @NonNullFields
-package com.rj;
+package org.openrewrite.java;
 
 import org.openrewrite.internal.lang.NonNullApi;
 import org.openrewrite.internal.lang.NonNullFields;

@@ -53,7 +53,9 @@ public class StaticMethodRecipe extends Recipe {
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
-            if (methodIsStatic(method) || methodIsOverridable(method) || methodIsInExclusionList(method)) {
+            if (method.hasModifier(J.Modifier.Type.Static) ||
+                methodIsOverridable(method) ||
+                methodIsInExclusionList(method)) {
                 return method;
             }
 
@@ -66,10 +68,6 @@ public class StaticMethodRecipe extends Recipe {
 
         private static boolean methodIsOverridable(J.MethodDeclaration method) {
             return !method.hasModifier(J.Modifier.Type.Private) && !method.hasModifier(J.Modifier.Type.Final);
-        }
-
-        private static boolean methodIsStatic(J.MethodDeclaration method) {
-            return method.hasModifier(J.Modifier.Type.Static);
         }
 
         private boolean methodIsInExclusionList(J.MethodDeclaration method) {

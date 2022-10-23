@@ -3,6 +3,7 @@ package org.openrewrite.java;
 import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.Markers;
@@ -59,7 +60,7 @@ public class StaticMethodRecipe extends Recipe {
                 return method;
             }
 
-            if (!doesMethodReferenceInstanceData(method)) {
+            if (!doesBodyReferenceInstanceData(method.getBody())) {
                 return addStaticModifierTo(method);
             }
 
@@ -96,8 +97,8 @@ public class StaticMethodRecipe extends Recipe {
             return false;
         }
 
-        private boolean doesMethodReferenceInstanceData(J.MethodDeclaration methodDeclaration) {
-            AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
+        private boolean doesBodyReferenceInstanceData(J.@Nullable Block body) {
+            AtomicBoolean bodyReferencesInstanceData = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
@@ -107,9 +108,9 @@ public class StaticMethodRecipe extends Recipe {
 
                     return identifier;
                 }
-            }.visit(methodDeclaration.getBody(), hasInstanceDataReference);
+            }.visit(body, bodyReferencesInstanceData);
 
-            return hasInstanceDataReference.get();
+            return bodyReferencesInstanceData.get();
         }
 
         private boolean isInstanceVariableOfEnclosingClass(J.Identifier identifier) {

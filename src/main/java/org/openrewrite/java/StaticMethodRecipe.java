@@ -4,7 +4,6 @@ import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.internal.ListUtils;
-import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
 import org.openrewrite.marker.Markers;
@@ -12,6 +11,8 @@ import org.openrewrite.marker.Markers;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static org.openrewrite.Tree.randomId;
@@ -52,7 +53,7 @@ public class StaticMethodRecipe extends Recipe {
                 return method;
             }
 
-            if (!doesBodyReferenceInstanceData(method.getBody())) {
+            if (!methodReferencesInstanceDataOfEnclosingClass(method)) {
                 return addStaticModifierTo(method);
             }
 
@@ -89,36 +90,49 @@ public class StaticMethodRecipe extends Recipe {
             return false;
         }
 
-        private boolean doesBodyReferenceInstanceData(J.@Nullable Block body) {
-            AtomicBoolean bodyReferencesInstanceData = new AtomicBoolean(false);
+        private boolean methodReferencesInstanceDataOfEnclosingClass(J.MethodDeclaration methodDeclaration) {
+            AtomicBoolean methodReferencesInstanceDataOfEnclosingClass = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
-                    if (isInstanceVariableOfEnclosingClass(identifier)) {
+                    if (identifierIsInstanceVariableOfEnclosingClass(identifier)) {
                         atomicBoolean.set(true);
                     }
 
                     return identifier;
                 }
-            }.visit(body, bodyReferencesInstanceData);
+            }.visit(methodDeclaration.getBody(), methodReferencesInstanceDataOfEnclosingClass);
 
-            return bodyReferencesInstanceData.get();
+            return methodReferencesInstanceDataOfEnclosingClass.get();
         }
 
-        private boolean isInstanceVariableOfEnclosingClass(J.Identifier identifier) {
+        private boolean identifierIsInstanceVariableOfEnclosingClass(J.Identifier identifier) {
             J.ClassDeclaration enclosingClass = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
 
-            return enclosingClass.getBody()
-                                 .getStatements()
-                                 .stream()
-                                 .filter(J.VariableDeclarations.class::isInstance)
-                                 .map(J.VariableDeclarations.class::cast)
-                                 .filter(variableDeclarations -> variableDeclarations.getVariables()
-                                                                                     .stream()
-                                                                                     .anyMatch(namedVariable -> namedVariable.getName()
-                                                                                                                             .getSimpleName()
-                                                                                                                             .equals(identifier.getSimpleName())))
-                                 .anyMatch(variableDeclarations -> !variableDeclarations.hasModifier(J.Modifier.Type.Static));
+            return getVariableDeclarations(enclosingClass).filter(variablesMatchingSimpleNameOf(identifier))
+                                                          .anyMatch(noStaticModifier());
+        }
+
+        @NotNull
+        private static Predicate<J.VariableDeclarations> variablesMatchingSimpleNameOf(J.Identifier identifier) {
+            return variableDeclarations -> variableDeclarations.getVariables()
+                                                               .stream()
+                                                               .anyMatch(namedVariable -> namedVariable.getName()
+                                                                                                       .getSimpleName()
+                                                                                                       .equals(identifier.getSimpleName()));
+        }
+
+        @NotNull
+        private static Predicate<J.VariableDeclarations> noStaticModifier() {
+            return variableDeclarations -> !variableDeclarations.hasModifier(J.Modifier.Type.Static);
+        }
+
+        private Stream<J.VariableDeclarations> getVariableDeclarations(J.ClassDeclaration classDeclaration) {
+            return classDeclaration.getBody()
+                                   .getStatements()
+                                   .stream()
+                                   .filter(J.VariableDeclarations.class::isInstance)
+                                   .map(J.VariableDeclarations.class::cast);
         }
 
         @NotNull

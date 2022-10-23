@@ -3,6 +3,7 @@ package org.openrewrite.java;
 import org.jetbrains.annotations.NotNull;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.TypeUtils;
@@ -19,13 +20,6 @@ import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
 
 public class StaticMethodRecipe extends Recipe {
-    private static final J.Modifier staticModifier = new J.Modifier(randomId(),
-                                                                    EMPTY.withWhitespace(" "),
-                                                                    Markers.EMPTY,
-                                                                    J.Modifier.Type.Static,
-                                                                    emptyList()
-    );
-
     private static final Collection<String> METHODS_TO_EXCLUDE_FROM_RECIPE = Arrays.asList(
             "* writeObject(java.io.ObjectOutputStream)",
             "* readObject(java.io.ObjectInputStream)",
@@ -131,10 +125,15 @@ public class StaticMethodRecipe extends Recipe {
 
         @NotNull
         private static J.MethodDeclaration addStaticModifierTo(J.MethodDeclaration method) {
-            List<J.Modifier> modifiers = new ArrayList<>(method.getModifiers());
-            modifiers.add(staticModifier);
 
-            method = method.withModifiers(modifiers);
+            J.Modifier staticModifier = new J.Modifier(randomId(),
+                                                       EMPTY.withWhitespace(" "),
+                                                       Markers.EMPTY,
+                                                       J.Modifier.Type.Static,
+                                                       emptyList()
+            );
+
+            method = method.withModifiers(ListUtils.concat(staticModifier, method.getModifiers()));
 
             return method;
         }

@@ -103,13 +103,11 @@ public class StaticMethodRecipe extends Recipe {
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
                 public J.Identifier visitIdentifier(J.Identifier identifier, AtomicBoolean atomicBoolean) {
-                    J.Identifier visitIdentifier = super.visitIdentifier(identifier, atomicBoolean);
-
                     if (isInstanceVariableOfEnclosingClass(identifier)) {
                         atomicBoolean.set(true);
                     }
 
-                    return visitIdentifier;
+                    return identifier;
                 }
             }.visit(methodDeclaration.getBody(), hasInstanceDataReference);
 

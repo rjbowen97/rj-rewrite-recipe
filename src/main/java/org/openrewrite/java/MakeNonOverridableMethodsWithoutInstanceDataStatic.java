@@ -18,7 +18,7 @@ import static java.util.Collections.emptyList;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
 
-public class StaticMethodRecipe extends Recipe {
+public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
     private static final Collection<String> METHODS_TO_EXCLUDE_FROM_RECIPE = Arrays.asList(
             "* writeObject(java.io.ObjectOutputStream)",
             "* readObject(java.io.ObjectInputStream)",

@@ -6,10 +6,10 @@ import org.openrewrite.test.RewriteTest;
 
 import static org.openrewrite.java.Assertions.java;
 
-class StaticMethodRecipeTest implements RewriteTest {
+class MakeNonOverridableMethodsWithoutInstanceDataStaticTest implements RewriteTest {
     @Override
     public void defaults(RecipeSpec spec) {
-        spec.recipe(new StaticMethodRecipe())
+        spec.recipe(new MakeNonOverridableMethodsWithoutInstanceDataStatic())
             .parser(JavaParser.fromJavaVersion().logCompilationWarningsAndErrors(true));
     }
 

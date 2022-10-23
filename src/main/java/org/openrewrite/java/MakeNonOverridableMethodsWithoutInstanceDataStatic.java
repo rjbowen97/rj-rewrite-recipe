@@ -19,7 +19,7 @@ import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.java.tree.Space.EMPTY;
 
 public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
-    private static final Collection<String> METHODS_TO_EXCLUDE_FROM_RECIPE = Arrays.asList(
+    private static final Collection<String> OVERRIDDEN_SERIALIZABLE_METHODS_TO_EXCLUDE_FROM_RECIPE = Arrays.asList(
             "* writeObject(java.io.ObjectOutputStream)",
             "* readObject(java.io.ObjectInputStream)",
             "* readObjectNoData()"
@@ -66,14 +66,14 @@ public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
 
         private boolean methodIsInExclusionList(J.MethodDeclaration method) {
             J.ClassDeclaration enclosingClass = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
-            boolean enclosingClassImplementsSerializable = classImplementsSerializable(enclosingClass);
 
-            if (enclosingClassImplementsSerializable) {
-                return METHODS_TO_EXCLUDE_FROM_RECIPE.stream()
-                                                     .map(MethodMatcher::new)
-                                                     .anyMatch(methodMatcher -> methodMatcher.matches(method,
-                                                                                                      enclosingClass
-                                                     ));
+            if (classImplementsSerializable(enclosingClass)) {
+                return OVERRIDDEN_SERIALIZABLE_METHODS_TO_EXCLUDE_FROM_RECIPE.stream()
+                                                                             .map(MethodMatcher::new)
+                                                                             .anyMatch(methodMatcher -> methodMatcher.matches(
+                                                                                     method,
+                                                                                     enclosingClass
+                                                                             ));
             }
 
             return false;
@@ -83,14 +83,14 @@ public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
             if (classDecl.getImplements() != null) {
                 return classDecl.getImplements()
                                 .stream()
-                                .anyMatch(implement -> TypeUtils.isOfClassType(implement.getType(),
+                                .anyMatch(implemented -> TypeUtils.isOfClassType(implemented.getType(),
                                                                                "java.io.Serializable"
                                 ));
             }
             return false;
         }
 
-        private boolean methodReferencesInstanceDataOfEnclosingClass(J.MethodDeclaration methodDeclaration) {
+        private boolean methodReferencesInstanceDataOfEnclosingClass(J.MethodDeclaration method) {
             AtomicBoolean methodReferencesInstanceDataOfEnclosingClass = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
@@ -101,7 +101,7 @@ public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
 
                     return identifier;
                 }
-            }.visit(methodDeclaration.getBody(), methodReferencesInstanceDataOfEnclosingClass);
+            }.visit(method.getBody(), methodReferencesInstanceDataOfEnclosingClass);
 
             return methodReferencesInstanceDataOfEnclosingClass.get();
         }
@@ -109,17 +109,17 @@ public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
         private boolean identifierIsInstanceVariableOfEnclosingClass(J.Identifier identifier) {
             J.ClassDeclaration enclosingClass = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
 
-            return getVariableDeclarations(enclosingClass).filter(variablesMatchingSimpleNameOf(identifier))
+            return getVariableDeclarations(enclosingClass).filter(variablesWithSimpleNamesMatching(identifier.getSimpleName()))
                                                           .anyMatch(noStaticModifier());
         }
 
         @NotNull
-        private static Predicate<J.VariableDeclarations> variablesMatchingSimpleNameOf(J.Identifier identifier) {
+        private static Predicate<J.VariableDeclarations> variablesWithSimpleNamesMatching(String targetSimpleName) {
             return variableDeclarations -> variableDeclarations.getVariables()
                                                                .stream()
                                                                .anyMatch(namedVariable -> namedVariable.getName()
                                                                                                        .getSimpleName()
-                                                                                                       .equals(identifier.getSimpleName()));
+                                                                                                       .equals(targetSimpleName));
         }
 
         @NotNull
@@ -137,7 +137,6 @@ public class MakeNonOverridableMethodsWithoutInstanceDataStatic extends Recipe {
 
         @NotNull
         private static J.MethodDeclaration addStaticModifierTo(J.MethodDeclaration method) {
-
             J.Modifier staticModifier = new J.Modifier(randomId(),
                                                        EMPTY.withWhitespace(" "),
                                                        Markers.EMPTY,

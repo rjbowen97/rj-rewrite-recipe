@@ -53,15 +53,19 @@ public class StaticMethodRecipe extends Recipe {
     private static class StaticMethodVisitor extends JavaIsoVisitor<ExecutionContext> {
         @Override
         public J.MethodDeclaration visitMethodDeclaration(J.MethodDeclaration method, ExecutionContext executionContext) {
-            if (methodIsStatic(method) || methodIsInExclusionList(method)) {
+            if (methodIsStatic(method) || methodIsOverridable(method) || methodIsInExclusionList(method)) {
                 return method;
             }
 
-            if (methodShouldBeStatic(method)) {
+            if (!doesMethodReferenceInstanceData(method)) {
                 return addStaticModifierTo(method);
             }
 
             return method;
+        }
+
+        private static boolean methodIsOverridable(J.MethodDeclaration method) {
+            return !method.hasModifier(J.Modifier.Type.Private) && !method.hasModifier(J.Modifier.Type.Final);
         }
 
         private static boolean methodIsStatic(J.MethodDeclaration method) {
@@ -69,14 +73,14 @@ public class StaticMethodRecipe extends Recipe {
         }
 
         private boolean methodIsInExclusionList(J.MethodDeclaration method) {
-            J.ClassDeclaration classDecl = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
-            boolean enclosingClassImplementsSerializable = classImplementsSerializable(classDecl);
+            J.ClassDeclaration enclosingClass = getCursor().firstEnclosingOrThrow(J.ClassDeclaration.class);
+            boolean enclosingClassImplementsSerializable = classImplementsSerializable(enclosingClass);
 
             if (enclosingClassImplementsSerializable) {
                 return METHODS_TO_EXCLUDE_FROM_RECIPE.stream()
                                                      .map(MethodMatcher::new)
                                                      .anyMatch(methodMatcher -> methodMatcher.matches(method,
-                                                                                                      classDecl
+                                                                                                      enclosingClass
                                                      ));
             }
 
@@ -94,18 +98,7 @@ public class StaticMethodRecipe extends Recipe {
             return false;
         }
 
-        private boolean methodShouldBeStatic(J.MethodDeclaration modifiedMethod) {
-            return hasPrivateOrFinal(modifiedMethod.getModifiers()) && !doesMethodReferenceInstanceData(modifiedMethod);
-        }
-
-        private static boolean hasPrivateOrFinal(List<J.Modifier> modifiers) {
-            return modifiers.stream()
-                            .map(J.Modifier::getType)
-                            .anyMatch(type -> type.equals(J.Modifier.Type.Private) ||
-                                              type.equals(J.Modifier.Type.Final));
-        }
-
-        private boolean doesMethodReferenceInstanceData(J.MethodDeclaration modifiedMethod) {
+        private boolean doesMethodReferenceInstanceData(J.MethodDeclaration methodDeclaration) {
             AtomicBoolean hasInstanceDataReference = new AtomicBoolean(false);
             new JavaIsoVisitor<AtomicBoolean>() {
                 @Override
@@ -118,7 +111,7 @@ public class StaticMethodRecipe extends Recipe {
 
                     return visitIdentifier;
                 }
-            }.visit(modifiedMethod.getBody(), hasInstanceDataReference);
+            }.visit(methodDeclaration.getBody(), hasInstanceDataReference);
 
             return hasInstanceDataReference.get();
         }

@@ -127,10 +127,7 @@ public class StaticMethodRecipe extends Recipe {
                                                                                      .anyMatch(namedVariable -> namedVariable.getName()
                                                                                                                              .getSimpleName()
                                                                                                                              .equals(identifier.getSimpleName())))
-                                 .anyMatch(variableDeclarations -> variableDeclarations.getModifiers()
-                                                                                       .stream()
-                                                                                       .map(J.Modifier::getType)
-                                                                                       .noneMatch(type -> type.equals(J.Modifier.Type.Static)));
+                                 .anyMatch(variableDeclarations -> !variableDeclarations.hasModifier(J.Modifier.Type.Static));
         }
 
         @NotNull
